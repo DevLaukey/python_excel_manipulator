@@ -20,4 +20,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    combine_excel_files(args.path)
+    combine_excel_files(args.path)s
