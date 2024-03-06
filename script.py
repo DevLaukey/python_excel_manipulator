@@ -29,12 +29,12 @@ def combine_excel_files(path):
     combined_df = pd.concat(all_dataframes, ignore_index=True)
 
     # Use the scenario name as the output file name
-    output_filename = f"{scenario_name}_combined.xlsx"
+    output_filename = f"{scenario_name}_comparison.xlsx"
     
     # Write to Excel with the scenario name as the sheet name
     writer = pd.ExcelWriter(output_filename, engine='xlsxwriter')
     combined_df.to_excel(writer, sheet_name=scenario_name, index=False)
-    writer.save()
+    writer._save()
 
 if __name__ == "__main__":
     path = input("Enter the path to the directory containing the Excel files: ")
