@@ -12,20 +12,63 @@ def extract_scenario_name(filename):
         return None
 
 def calculate_revenues(df):
-    # Calculate the sum of columns for each revenue type
-    revenues = df.groupby('Scenario').sum()[['Day-ahead revenues (€)',
-                                             'primary up band revenues (€)',
-                                             'primary down band revenues (€)',
-                                             'secondary up band revenues (€)',
-                                             'secondary down band revenues (€)',
-                                             'secondary up reserve energy revenues (€)',
-                                             'secondary down reserve energy revenues (€)',
-                                             'Overall balancing revenues (€)',
-                                             'Energy lack balancing revenues (€)',
-                                             'Energy surplus balancing revenues (€)',
-                                             'secondary up band balancing cost (€)',
-                                             'secondary down band balancing cost (€)']]
-    return revenues
+    # Define separate formulas for each revenue type using actual column names
+    revenue_formulas = {
+        'Day-ahead revenues (€)': ['p_annonce_day_ahead_MW * real_prices_day_ahead_euros_per_MWh'],
+        'primary up band revenues (€)': ['p_annonce_reserve_MW_primary_up * real_prices_band_euros_per_MW_primary_up'],
+        'primary down band revenues (€)': ['p_annonce_reserve_MW_primary_down * real_prices_band_euros_per_MW_primary_down'],
+        'secondary up band revenues (€)': ['p_annonce_reserve_MW_secondary_up * real_prices_band_euros_per_MW_secondary_up'],
+        'secondary down band revenues (€)': ['p_annonce_reserve_MW_secondary_down * real_prices_band_euros_per_MW_secondary_down'],
+        'secondary up reserve energy revenues (€)':['e_injection_reserve_MWh_secondary_up * real_prices_energy_reserve_euros_per_MWh_secondary_up'],
+        'secondary down reserve energy revenues (€)':['e_injection_reserve_MWh_secondary_down * real_prices_energy_reserve_euros_per_MWh_secondary_down'],
+        'Energy lack balancing revenues (€)':['e_balancing_overall_lack_MWh * real_prices_energy_lack_balancing_euros_per_MWh -1'],
+        'Energy surplus balancing revenues (€)':['e_balancing_overall_surplus_MWh * real_prices_energy_surplus_balancing_euros_per_MWh'],
+        'secondary up band balancing cost (€)': ['abs(p_balancing_reserve_MW_secondary_up_band_na) * real_prices_band_euros_per_MW_secondary_up'],
+        'secondary down band balancing cost (€)': ['abs(p_balancing_reserve_MW_secondary_down_band_na) * real_prices_band_euros_per_MW_secondary_down'],
+    }
+
+    # Create a copy of the dataframe to avoid modifying the original
+    calculated_df = df.copy()
+
+    # Apply the formulas for each revenue type
+    for revenue, formula in revenue_formulas.items():
+        calculated_df[revenue] = eval(formula[0], {'p_annonce_day_ahead_MW': df['p_annonce_day_ahead_MW'],
+                                                   'real_prices_day_ahead_euros_per_MWh': df['real_prices_day_ahead_euros_per_MWh'],
+                                                    'p_annonce_reserve_MW_primary_up': df['p_annonce_reserve_MW_primary_up'],
+                                                    'real_prices_band_euros_per_MW_primary_up': df['real_prices_band_euros_per_MW_primary_up'],
+                                                    'p_annonce_reserve_MW_primary_down': df['p_annonce_reserve_MW_primary_down'],
+                                                    'real_prices_band_euros_per_MW_primary_down': df['real_prices_band_euros_per_MW_primary_down'],
+                                                    'p_annonce_reserve_MW_secondary_up': df['p_annonce_reserve_MW_secondary_up'],
+                                                    'real_prices_band_euros_per_MW_secondary_up': df['real_prices_band_euros_per_MW_secondary_up'],
+                                                    'p_annonce_reserve_MW_secondary_down': df['p_annonce_reserve_MW_secondary_down'],
+                                                    'real_prices_band_euros_per_MW_secondary_down': df['real_prices_band_euros_per_MW_secondary_down'],
+                                                    'e_injection_reserve_MWh_secondary_up': df['e_injection_reserve_MWh_secondary_up'],
+                                                    'real_prices_energy_reserve_euros_per_MWh_secondary_up': df['real_prices_energy_reserve_euros_per_MWh_secondary_up'],
+                                                    'e_injection_reserve_MWh_secondary_down': df['e_injection_reserve_MWh_secondary_down'],
+                                                    'real_prices_energy_reserve_euros_per_MWh_secondary_down': df['real_prices_energy_reserve_euros_per_MWh_secondary_down'],
+                                                    'e_balancing_overall_lack_MWh': df['e_balancing_overall_lack_MWh'],
+                                                    'real_prices_energy_lack_balancing_euros_per_MWh': df['real_prices_energy_lack_balancing_euros_per_MWh'],
+                                                    'e_balancing_overall_surplus_MWh': df['e_balancing_overall_surplus_MWh'],
+                                                    'real_prices_energy_surplus_balancing_euros_per_MWh': df['real_prices_energy_surplus_balancing_euros_per_MWh'],
+                                                    'p_balancing_reserve_MW_secondary_up_band_na': df['p_balancing_reserve_MW_secondary_up_band_na'],
+                                                    'p_balancing_reserve_MW_secondary_down_band_na': df['p_balancing_reserve_MW_secondary_down_band_na']
+                                                    
+                                                    
+                                                 })
+
+    # Return only the calculated revenue columns
+    calculated_revenues = calculated_df[['Scenario'] + list(revenue_formulas.keys())]
+
+    return calculated_revenues
+
+def create_calculations_table(calculated_revenues):
+    # Create a table for calculations in the specified format
+    calculations_table = pd.DataFrame({
+        'CALCULATIONS': list(calculated_revenues.columns)[1:],  # Exclude the 'Scenario' column
+        'Value': calculated_revenues.sum(axis=0)[1:]  # Sum values for each revenue type
+    })
+
+    return calculations_table
 
 def combine_excel_files(path):
     all_dataframes = []
@@ -47,20 +90,19 @@ def combine_excel_files(path):
     # Calculate revenues
     revenues = calculate_revenues(combined_df)
 
-    # Create a new dataframe with the calculated revenues
-    calculations_df = pd.DataFrame({'CALCULATIONS': list(revenues.index)})
-
-    # Add the calculated values to the calculations_df
-    for col in revenues.columns:
-        calculations_df[col] = revenues[col].values
+    # Create a table for calculations
+    calculations_table = create_calculations_table(revenues)
 
     # Use the scenario name as the output file name
     output_filename = f"{scenario_name}_comparison.xlsx"
-    
+
     # Write to Excel with two sheets: scenario_name and scenario_name_comparison
     with pd.ExcelWriter(output_filename, engine='xlsxwriter') as writer:
+        # Add the first sheet with the values
         combined_df.to_excel(writer, sheet_name=scenario_name, index=False)
-        calculations_df.to_excel(writer, sheet_name=f"{scenario_name}_comparison", index=False)
+        
+        # Add the second sheet with the calculations table
+        calculations_table.to_excel(writer, sheet_name=f"{scenario_name}_comparison", startrow=1, index=False)
 
 if __name__ == "__main__":
     path = input("Enter the path to the directory containing the Excel files: ")
