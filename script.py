@@ -19,10 +19,10 @@ def calculate_revenues(df):
         'primary down band revenues (€)': ['p_annonce_reserve_MW_primary_down * real_prices_band_euros_per_MW_primary_down'],
         'secondary up band revenues (€)': ['p_annonce_reserve_MW_secondary_up * real_prices_band_euros_per_MW_secondary_up'],
         'secondary down band revenues (€)': ['p_annonce_reserve_MW_secondary_down * real_prices_band_euros_per_MW_secondary_down'],
-        'secondary up reserve energy revenues (€)':['e_injection_reserve_MWh_secondary_up * real_prices_energy_reserve_euros_per_MWh_secondary_up'],
-        'secondary down reserve energy revenues (€)':['e_injection_reserve_MWh_secondary_down * real_prices_energy_reserve_euros_per_MWh_secondary_down'],
-        'Energy lack balancing revenues (€)':['e_balancing_overall_lack_MWh * real_prices_energy_lack_balancing_euros_per_MWh -1'],
-        'Energy surplus balancing revenues (€)':['e_balancing_overall_surplus_MWh * real_prices_energy_surplus_balancing_euros_per_MWh'],
+        'secondary up reserve energy revenues (€)': ['e_injection_reserve_MWh_secondary_up * real_prices_energy_reserve_euros_per_MWh_secondary_up'],
+        'secondary down reserve energy revenues (€)': ['e_injection_reserve_MWh_secondary_down * real_prices_energy_reserve_euros_per_MWh_secondary_down'],
+        'Energy lack balancing revenues (€)': ['e_balancing_overall_lack_MWh * real_prices_energy_lack_balancing_euros_per_MWh'],
+        'Energy surplus balancing revenues (€)': ['e_balancing_overall_surplus_MWh * real_prices_energy_surplus_balancing_euros_per_MWh'],
         'secondary up band balancing cost (€)': ['abs(p_balancing_reserve_MW_secondary_up_band_na) * real_prices_band_euros_per_MW_secondary_up'],
         'secondary down band balancing cost (€)': ['abs(p_balancing_reserve_MW_secondary_down_band_na) * real_prices_band_euros_per_MW_secondary_down'],
     }
@@ -33,28 +33,26 @@ def calculate_revenues(df):
     # Apply the formulas for each revenue type
     for revenue, formula in revenue_formulas.items():
         calculated_df[revenue] = eval(formula[0], {'p_annonce_day_ahead_MW': df['p_annonce_day_ahead_MW'],
+                                                   'p_annonce_reserve_MW_primary_up': df['p_annonce_reserve_MW_primary_up'],
+                                                   'p_annonce_reserve_MW_primary_down': df['p_annonce_reserve_MW_primary_down'],
+                                                   'p_annonce_reserve_MW_secondary_up': df['p_annonce_reserve_MW_secondary_up'],
+                                                   'p_annonce_reserve_MW_secondary_down': df['p_annonce_reserve_MW_secondary_down'],
+                                                   'e_injection_reserve_MWh_secondary_up': df['e_injection_reserve_MWh_secondary_up'],
+                                                   'e_injection_reserve_MWh_secondary_down': df['e_injection_reserve_MWh_secondary_down'],
+                                                   'e_balancing_overall_lack_MWh': df['e_balancing_overall_lack_MWh'],
+                                                   'e_balancing_overall_surplus_MWh': df['e_balancing_overall_surplus_MWh'],
+                                                   'p_balancing_reserve_MW_secondary_up_band_na': df['p_balancing_reserve_MW_secondary_up_band_na'],
+                                                   'p_balancing_reserve_MW_secondary_down_band_na': df['p_balancing_reserve_MW_secondary_down_band_na'],
                                                    'real_prices_day_ahead_euros_per_MWh': df['real_prices_day_ahead_euros_per_MWh'],
-                                                    'p_annonce_reserve_MW_primary_up': df['p_annonce_reserve_MW_primary_up'],
-                                                    'real_prices_band_euros_per_MW_primary_up': df['real_prices_band_euros_per_MW_primary_up'],
-                                                    'p_annonce_reserve_MW_primary_down': df['p_annonce_reserve_MW_primary_down'],
-                                                    'real_prices_band_euros_per_MW_primary_down': df['real_prices_band_euros_per_MW_primary_down'],
-                                                    'p_annonce_reserve_MW_secondary_up': df['p_annonce_reserve_MW_secondary_up'],
-                                                    'real_prices_band_euros_per_MW_secondary_up': df['real_prices_band_euros_per_MW_secondary_up'],
-                                                    'p_annonce_reserve_MW_secondary_down': df['p_annonce_reserve_MW_secondary_down'],
-                                                    'real_prices_band_euros_per_MW_secondary_down': df['real_prices_band_euros_per_MW_secondary_down'],
-                                                    'e_injection_reserve_MWh_secondary_up': df['e_injection_reserve_MWh_secondary_up'],
-                                                    'real_prices_energy_reserve_euros_per_MWh_secondary_up': df['real_prices_energy_reserve_euros_per_MWh_secondary_up'],
-                                                    'e_injection_reserve_MWh_secondary_down': df['e_injection_reserve_MWh_secondary_down'],
-                                                    'real_prices_energy_reserve_euros_per_MWh_secondary_down': df['real_prices_energy_reserve_euros_per_MWh_secondary_down'],
-                                                    'e_balancing_overall_lack_MWh': df['e_balancing_overall_lack_MWh'],
-                                                    'real_prices_energy_lack_balancing_euros_per_MWh': df['real_prices_energy_lack_balancing_euros_per_MWh'],
-                                                    'e_balancing_overall_surplus_MWh': df['e_balancing_overall_surplus_MWh'],
-                                                    'real_prices_energy_surplus_balancing_euros_per_MWh': df['real_prices_energy_surplus_balancing_euros_per_MWh'],
-                                                    'p_balancing_reserve_MW_secondary_up_band_na': df['p_balancing_reserve_MW_secondary_up_band_na'],
-                                                    'p_balancing_reserve_MW_secondary_down_band_na': df['p_balancing_reserve_MW_secondary_down_band_na']
-                                                    
-                                                    
-                                                 })
+                                                   'real_prices_band_euros_per_MW_primary_up': df['real_prices_band_euros_per_MW_primary_up'],
+                                                   'real_prices_band_euros_per_MW_primary_down': df['real_prices_band_euros_per_MW_primary_down'],
+                                                   'real_prices_band_euros_per_MW_secondary_up': df['real_prices_band_euros_per_MW_secondary_up'],
+                                                   'real_prices_band_euros_per_MW_secondary_down': df['real_prices_band_euros_per_MW_secondary_down'],
+                                                   'real_prices_energy_reserve_euros_per_MWh_secondary_up': df['real_prices_energy_reserve_euros_per_MWh_secondary_up'],
+                                                   'real_prices_energy_reserve_euros_per_MWh_secondary_down': df['real_prices_energy_reserve_euros_per_MWh_secondary_down'],
+                                                   'real_prices_energy_lack_balancing_euros_per_MWh': df['real_prices_energy_lack_balancing_euros_per_MWh'],
+                                                   'real_prices_energy_surplus_balancing_euros_per_MWh': df['real_prices_energy_surplus_balancing_euros_per_MWh'],
+                                                  })
 
     # Return only the calculated revenue columns
     calculated_revenues = calculated_df[['Scenario'] + list(revenue_formulas.keys())]
