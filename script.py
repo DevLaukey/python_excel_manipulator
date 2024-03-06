@@ -59,14 +59,22 @@ def calculate_revenues(df):
 
     return calculated_revenues
 
-def create_calculations_table(calculated_revenues):
-    # Create a table for calculations in the specified format
+def create_calculations_table(calculated_revenues, overall_df):
+    # Create a table for calculated revenues
     calculations_table = pd.DataFrame({
         'CALCULATIONS': list(calculated_revenues.columns)[1:],  # Exclude the 'Scenario' column
-        'Value': calculated_revenues.sum(axis=0)[1:]  # Sum values for each revenue type
+        'Value': calculated_revenues.iloc[:, 1:].sum(axis=0)  # Sum values for each revenue type, excluding the 'Scenario' column
     })
 
-    return calculations_table
+    # Add details from the overall results file to a separate table
+    overall_details = pd.DataFrame({
+        'CALCULATIONS': overall_df.index,
+        'Value': overall_df.iloc[:, 0].values  # Convert the overall_df series to a numpy array to avoid length mismatch
+    })
+
+    return calculations_table, overall_details
+
+
 
 def combine_excel_files(path):
     all_dataframes = []
@@ -85,22 +93,32 @@ def combine_excel_files(path):
 
     combined_df = pd.concat(all_dataframes, ignore_index=True)
 
+    # Load overall results file
+    overall_results_file = [f for f in os.listdir(path) if "_overall_results.xlsx" in f]
+    if overall_results_file:
+        overall_df = pd.read_excel(os.path.join(path, overall_results_file[0]), engine='openpyxl')
+    else:
+        overall_df = pd.DataFrame()
+
     # Calculate revenues
     revenues = calculate_revenues(combined_df)
 
-    # Create a table for calculations
-    calculations_table = create_calculations_table(revenues)
+    # Create tables for calculations and overall details
+    calculations_table, overall_details = create_calculations_table(revenues, overall_df)
 
     # Use the scenario name as the output file name
     output_filename = f"{scenario_name}_comparison.xlsx"
 
-    # Write to Excel with two sheets: scenario_name and scenario_name_comparison
+    # Write to Excel with three sheets: scenario_name, scenario_name_comparison, and overall_details
     with pd.ExcelWriter(output_filename, engine='xlsxwriter') as writer:
         # Add the first sheet with the values
         combined_df.to_excel(writer, sheet_name=scenario_name, index=False)
         
-        # Add the second sheet with the calculations table
+        # Add the second sheet with the calculated revenues
         calculations_table.to_excel(writer, sheet_name=f"{scenario_name}_comparison", startrow=1, index=False)
+
+        # Add the third sheet with the overall details
+        overall_details.to_excel(writer, sheet_name=f"{scenario_name}_overall_details", startrow=1, index=False)
 
 if __name__ == "__main__":
     path = input("Enter the path to the directory containing the Excel files: ")
