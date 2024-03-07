@@ -70,22 +70,19 @@ def create_calculations_table(calculated_revenues, overall_df):
     # Set 'CALCULATIONS' as the index in both DataFrames
     calculations_table.set_index('CALCULATIONS', inplace=True)
 
-    # Identify the correct column to use as the index in overall_df
-    index_column = overall_df.columns[0]
-
-    # Set the identified column as the index in overall_df
-    overall_df.set_index(index_column, inplace=True)
+    # If the '0' column is present in overall_df, set it as the index
+    if 'Scenario' in overall_df.columns:
+        overall_df.set_index('Scenario', inplace=True)
+    elif '0' in overall_df.columns:
+        overall_df.set_index('0', inplace=True)
+    else:
+        # If 'Scenario' and '0' are not present, set the index as the first column
+        overall_df.set_index(overall_df.columns[0], inplace=True)
 
     # Merge the calculations_table and overall_df on the index
     merged_df = pd.merge(calculations_table, overall_df, left_index=True, right_index=True, how='left')
-    
-    print(merged_df)
 
-    return merged_df
-
-
-
-
+    return merged_df.reset_index(), pd.DataFrame()  # Return an empty DataFrame for overall_details
 
 def combine_excel_files(path):
     all_dataframes = []
