@@ -59,20 +59,31 @@ def calculate_revenues(df):
 
     return calculated_revenues
 
+
 def create_calculations_table(calculated_revenues, overall_df):
     # Create a table for calculated revenues
     calculations_table = pd.DataFrame({
         'CALCULATIONS': list(calculated_revenues.columns)[1:],  # Exclude the 'Scenario' column
-        'Value': calculated_revenues.iloc[:, 1:].sum(axis=0)  # Sum values for each revenue type, excluding the 'Scenario' column
+        'Calculated Value': calculated_revenues.iloc[:, 1:].sum(axis=0)  # Sum values for each revenue type, excluding the 'Scenario' column
     })
 
-    # Add details from the overall results file to a separate table
-    overall_details = pd.DataFrame({
-        'CALCULATIONS': overall_df.index,
-        'Value': overall_df.iloc[:, 0].values  # Convert the overall_df series to a numpy array to avoid length mismatch
-    })
+    # Set 'CALCULATIONS' as the index in both DataFrames
+    calculations_table.set_index('CALCULATIONS', inplace=True)
 
-    return calculations_table, overall_details
+    # Identify the correct column to use as the index in overall_df
+    index_column = overall_df.columns[0]
+
+    # Set the identified column as the index in overall_df
+    overall_df.set_index(index_column, inplace=True)
+
+    # Merge the calculations_table and overall_df on the index
+    merged_df = pd.merge(calculations_table, overall_df, left_index=True, right_index=True, how='left')
+    
+    print(merged_df)
+
+    return merged_df
+
+
 
 
 
@@ -119,6 +130,7 @@ def combine_excel_files(path):
 
         # Add the third sheet with the overall details
         overall_details.to_excel(writer, sheet_name=f"{scenario_name}_overall_details", startrow=1, index=False)
+
 
 if __name__ == "__main__":
     path = input("Enter the path to the directory containing the Excel files: ")
