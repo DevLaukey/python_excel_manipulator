@@ -70,19 +70,28 @@ def create_calculations_table(calculated_revenues, overall_df):
     # Set 'CALCULATIONS' as the index in both DataFrames
     calculations_table.set_index('CALCULATIONS', inplace=True)
 
-    # If the '0' column is present in overall_df, set it as the index
+    # If the 'Scenario' column is present in overall_df, set it as the index
     if 'Scenario' in overall_df.columns:
         overall_df.set_index('Scenario', inplace=True)
-    elif '0' in overall_df.columns:
-        overall_df.set_index('0', inplace=True)
     else:
-        # If 'Scenario' and '0' are not present, set the index as the first column
+        # If 'Scenario' is not present, set the index as the first column
         overall_df.set_index(overall_df.columns[0], inplace=True)
+
+    # Check if '0' column is present in overall_df
+    if '0' in overall_df.index:
+        # Use '0' as the index and transpose the DataFrame
+        overall_df = overall_df.T
+        # Use iloc to get the correct row (assuming '0' is in the first row)
+        overall_df = overall_df.iloc[1:]
 
     # Merge the calculations_table and overall_df on the index
     merged_df = pd.merge(calculations_table, overall_df, left_index=True, right_index=True, how='left')
+    
 
+    # Calculate percentage difference
+    merged_df['Percentage Difference'] = ((merged_df['Calculated Value'] - merged_df.loc[:, 0]) / merged_df.loc[:, 0]).abs() * 100
     return merged_df.reset_index(), pd.DataFrame()  # Return an empty DataFrame for overall_details
+
 
 def combine_excel_files(path):
     all_dataframes = []
@@ -125,10 +134,7 @@ def combine_excel_files(path):
         # Add the second sheet with the calculated revenues
         calculations_table.to_excel(writer, sheet_name=f"{scenario_name}_comparison", startrow=1, index=False)
 
-        # Add the third sheet with the overall details
-        overall_details.to_excel(writer, sheet_name=f"{scenario_name}_overall_details", startrow=1, index=False)
-
-
+        
 if __name__ == "__main__":
     path = input("Enter the path to the directory containing the Excel files: ")
     combine_excel_files(path)
