@@ -2,7 +2,6 @@ import os
 import pandas as pd
 
 def extract_scenario_name(filename):
-    # Extract the scenario name from the input filename
     base_name = os.path.basename(filename)
     if "_operations_results_logs.xlsx" in base_name:
         return base_name.replace("_operations_results_logs.xlsx", "")
@@ -86,14 +85,58 @@ def create_calculations_table(calculated_revenues, overall_df):
 
     # Merge the calculations_table and overall_df on the index
     merged_df = pd.merge(calculations_table, overall_df, left_index=True, right_index=True, how='left')
-    
 
     # Calculate percentage difference
     merged_df['Percentage Difference'] = ((merged_df['Calculated Value'] - merged_df.loc[:, 0]) / merged_df.loc[:, 0]).abs() * 100
     return merged_df.reset_index(), pd.DataFrame()  # Return an empty DataFrame for overall_details
 
 
-def combine_excel_files(path):
+def process_scenario(path, scenario_name):
+    all_dataframes = []
+
+    for filename in os.listdir(path):
+        if filename.endswith(".xlsx") or filename.endswith(".xls"):
+            df = pd.read_excel(os.path.join(path, filename))
+
+            # Extract scenario name from the filename
+            current_scenario_name = extract_scenario_name(filename)
+
+            if current_scenario_name is not None:
+                # Add a new column with the scenario name
+                df['Scenario'] = current_scenario_name
+                all_dataframes.append(df)
+
+    combined_df = pd.concat(all_dataframes, ignore_index=True)
+
+    # Filter only operations_results for the current scenario
+    combined_df = combined_df[combined_df['Scenario'] == scenario_name]
+
+    # Load overall results file for the current scenario
+    overall_results_file = [f for f in os.listdir(path) if f"{scenario_name}_overall_results.xlsx" in f]
+    if overall_results_file:
+        overall_df = pd.read_excel(os.path.join(path, overall_results_file[0]), engine='openpyxl')
+    else:
+        overall_df = pd.DataFrame()
+
+    # Calculate revenues
+    revenues = calculate_revenues(combined_df)
+
+    # Create tables for calculations and overall details
+    calculations_table, overall_details = create_calculations_table(revenues, overall_df)
+
+    # Use the scenario name as the output file name
+    output_filename = f"{scenario_name}_comparison.xlsx"
+
+    # Write to Excel with three sheets: scenario_name, scenario_name_comparison, and overall_details
+    with pd.ExcelWriter(output_filename, engine='xlsxwriter') as writer:
+        # Add the first sheet with the values
+        combined_df.to_excel(writer, sheet_name=scenario_name, index=False)
+
+        # Add the second sheet with the calculated revenues
+        calculations_table.to_excel(writer, sheet_name=f"{scenario_name}_comparison", startrow=1, index=False)
+
+
+def combine_excel_files(path, num_scenarios):
     all_dataframes = []
 
     for filename in os.listdir(path):
@@ -126,15 +169,31 @@ def combine_excel_files(path):
     # Use the scenario name as the output file name
     output_filename = f"{scenario_name}_comparison.xlsx"
 
-    # Write to Excel with three sheets: scenario_name, scenario_name_comparison, and overall_details
     with pd.ExcelWriter(output_filename, engine='xlsxwriter') as writer:
         # Add the first sheet with the values
         combined_df.to_excel(writer, sheet_name=scenario_name, index=False)
-        
+
         # Add the second sheet with the calculated revenues
         calculations_table.to_excel(writer, sheet_name=f"{scenario_name}_comparison", startrow=1, index=False)
 
-        
+        # If there are two scenarios, create additional sheets
+        if num_scenarios == 2:
+            for scenario_name in set(combined_df['Scenario']):
+                process_scenario(path, scenario_name)
+                combined_df = pd.read_excel(f"{scenario_name}_comparison.xlsx", sheet_name=f"{scenario_name}_comparison")
+                combined_df.to_excel(writer, sheet_name=f"{scenario_name}_comparison", index=False)
+
+
 if __name__ == "__main__":
     path = input("Enter the path to the directory containing the Excel files: ")
-    combine_excel_files(path)
+
+    # Prompt the user to choose the number of scenarios (1 or 2)
+    num_scenarios = int(input("Enter the number of scenarios (1 or 2): "))
+
+    if num_scenarios not in [1, 2]:
+        print("Invalid input. Please enter 1 or 2.")
+    else:
+        # Combine Excel files based on the number of scenarios
+        combine_excel_files(path, num_scenarios)
+
+        print(f"Comparison files created for {num_scenarios} scenarios.")
